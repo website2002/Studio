@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Nhập ID</title>
+</head>
+<body>
+
+<h2>Nhập ID thư mục</h2>
+
+<input type="text" id="folderId" placeholder="Nhập ID...">
+
+<button onclick="goToPage()">Xem thư mục</button>
+
+<script>
+function goToPage(){
+    const id = document.getElementById("folderId").value.trim();
+
+    if(!id){
+        alert("Vui lòng nhập ID");
+        return;
+    }
+
+    window.location.href = `admin.html?id=${id}`;
+}
+</script>
+
+</body>
+</html>

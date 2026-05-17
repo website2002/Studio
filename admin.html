@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý và Duyệt ảnh Google Drive</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.6; background-color: #f8f9fa; }
+        .container { max-width: 90%; margin: 0 auto; }
+        .form-group { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { padding: 10px; width: 100%; max-width: 500px; margin-bottom: 15px; display: block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        /* Buttons */
+        button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        #btnSave { background-color: #28a745; color: white; }
+        #btnSave:hover { background-color: #218838; }
+        .btn-edit { background-color: #ffc107; color: #212529; margin-right: 5px; padding: 6px 12px; font-size: 13px; }
+        .btn-delete { background-color: #dc3545; color: white; padding: 6px 12px; font-size: 13px; }
+        
+        /* Folder List */
+        ul { list-style-type: none; padding-left: 0; }
+        .folder-item { padding: 15px; background: white; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .folder-link { font-size: 18px; color: #007bff; text-decoration: none; font-weight: bold; cursor: pointer; }
+        .folder-link:hover { text-decoration: underline; color: #0056b3; }
+        .user-count { font-size: 13px; background: #e6f7ff; color: #1890ff; padding: 2px 8px; border-radius: 10px; margin-left: 8px; border: 1px solid #91d5ff; font-weight: bold; }
+        
+        /* Image Preview Section */
+        .preview-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px; display: none; }
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-top: 15px; }
+        .image-card { border: 1px solid #ddd; padding: 12px; border-radius: 6px; text-align: center; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .image-card img { max-width: 100%; height: 160px; object-fit: cover; border-radius: 4px; display: block; margin: 0 auto 10px; background-color: #f0f0f0; border: 1px solid #eee; }
+        .checkbox-container { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #eee; }
+        .checkbox-container input { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+        .image-name { font-size: 12px; color: #555; word-break: break-all; font-weight: bold; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        /* ===== CHỈ ÁP DỤNG CHO ĐIỆN THOẠI ===== */
+        @media screen and (max-width: 768px){
+
+            body{
+                margin: 4px;
+            }
+
+            .container{
+                max-width: 100%;
+            }
+
+            .preview-section{
+                padding: 4px;
+                border-radius: 4px;
+            }
+
+            .image-grid{
+                grid-template-columns: 1fr;
+                gap: 4px;
+                margin-top: 6px;
+            }
+
+            .image-card{
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                box-shadow: none;
+                overflow: hidden;
+            }
+
+            .image-card img{
+                width: 100%;
+                height: auto;
+
+                max-height: unset;
+
+                object-fit: contain;
+
+                margin: 0;
+                border-radius: 0;
+                border: none;
+            }
+
+            .image-name{
+                padding: 2px 4px;
+                height: auto;
+            }
+
+            .checkbox-container{
+                margin-top: 2px;
+                padding-top: 2px;
+                border-top: none;
+            }
+        }
+    </style>
+        <!-- Tải ảnh-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>STUDIO ...</h2>
+    
+    <div class="form-group" id="adminForm">
+        <h3 id="formTitle" style="margin-top:0;">Thêm thư mục mới</h3>
+        <input type="hidden" id="editKey">
+
+        <label for="studentName">Tên khách hàng:</label>
+        <input type="text" id="studentName" placeholder="Ví dụ: Huỳnh Mai">
+
+        <label for="driveLink">Link Folder Google Drive (Bắt buộc cài đặt chế độ: Bất kỳ ai có link đều xem được):</label>
+        <input type="text" id="driveLink" placeholder="Dán đường link thư mục Google Drive vào đây...">
+        
+        <button id="btnSave">Lưu Dữ Liệu</button>
+        <button id="btnCancel" style="background-color: #6c757d; color: white; display: none; margin-left: 5px;">Hủy Sửa</button>
+    </div>
+        <div style="margin-bottom: 15px;">
+        <button id="btnDownloadZip" style="background-color: #007bff; color: white; display: inline-block;">
+            🗜️ Tải ảnh đã duyệt (.zip)
+        </button>
+    </div>
+
+    <ul id="linkList">Đang tải ...</ul>
+
+    <div class="preview-section" id="previewSection">
+        <button onclick="document.getElementById('previewSection').style.display='none'" style="background:#6c757d; color:white; padding: 6px 12px; font-size: 13px; float: right; margin-bottom: 10px;">Đóng vùng xem</button>
+        <h3 id="previewTitle" style="margin-top: 0;">Ảnh trong thư mục:</h3>
+        <div class="image-grid" id="imageGrid"></div>
+    </div>
+    <!-- Thêm nút này vào bên trong #previewSection -->
+
+</div>
+
+<script type="module">
+    // --- CHỨC NĂNG TẢI ẢNH GỐC VÀ NÉN ZIP ---
+    const downloadZipBtn = document.getElementById('btnDownloadZip');
+
+    downloadZipBtn.onclick = async () => {
+        // 1. Kiểm tra xem có thư mục nào đang mở không
+        if (!activeFolderKey || !currentData[activeFolderKey]) {
+            alert("Vui lòng chọn một thư mục để tải ảnh!");
+            return;
+        }
+
+        const folderItem = currentData[activeFolderKey];
+        const savedImages = folderItem.images || {};
+        const imageKeys = Object.keys(savedImages);
+
+        if (imageKeys.length === 0) {
+            alert("Thư mục này chưa có bức ảnh nào được duyệt để tải về!");
+            return;
+        }
+
+        // Lấy danh sách ID file từ Google Drive đang hiển thị trên lưới ảnh hiện tại
+        // Để làm được điều này, chúng ta cần so khớp tên ảnh đã duyệt với ID tương ứng trên giao diện
+        const checkedFiles = [];
+        document.querySelectorAll('.checkbox-container input').forEach(box => {
+            if (box.checked) {
+                const fileName = box.getAttribute('data-file-name');
+                // Trích xuất fileId từ ID của checkbox (id="check_FILEID")
+                const fileId = box.id.replace('check_', ''); 
+                checkedFiles.push({ id: fileId, name: fileName });
+            }
+        });
+
+        if (checkedFiles.length === 0) {
+            alert("Không tìm thấy dữ liệu ảnh gốc tương ứng trên màn hình. Vui lòng bấm vào tên thư mục để tải lại lưới ảnh trước khi nhấn nút tải ZIP!");
+            return;
+        }
+
+        // 2. Tiến hành khởi tạo JSZip và tải ảnh
+        downloadZipBtn.disabled = true;
+        const originalText = downloadZipBtn.innerText;
+        downloadZipBtn.innerText = "⚡ Đang chuẩn bị tải...";
+
+        const zip = new JSZip();
+        let downloadedCount = 0;
+
+        for (let file of checkedFiles) {
+            try {
+                downloadZipBtn.innerText = `⏳ Đang tải ảnh chất lượng gốc (${downloadedCount + 1}/${checkedFiles.length}): ${file.name}`;
+                
+                // Link tải trực tiếp ảnh chất lượng gốc từ Google Drive bypass CORS phổ biến
+                const downloadUrl = `https://lh3.googleusercontent.com/d/${file.id}`;
+                
+                // Tải file dưới dạng dữ liệu thô (Blob)
+                const response = await fetch(downloadUrl);
+                if (!response.ok) throw new Error("Không thể tải file từ Google Drive");
+                
+                const blob = await response.blob();
+                
+                // Đưa file vào thư mục nén ZIP
+                zip.file(file.name, blob);
+                downloadedCount++;
+            } catch (err) {
+                console.error(`Lỗi khi tải ảnh ${file.name}:`, err);
+                // Nếu lỗi 1 ảnh, hệ thống vẫn tiếp tục tải các ảnh còn lại
+            }
+        }
+
+        if (downloadedCount === 0) {
+            alert("Thất bại! Không thể tải được bức ảnh gốc nào từ Google Drive do giới hạn quyền truy cập hoặc kết nối.");
+            downloadZipBtn.disabled = false;
+            downloadZipBtn.innerText = originalText;
+            return;
+        }
+
+        // 3. Tiến hành nén file và kích hoạt tải xuống
+        downloadZipBtn.innerText = "📦 Đang nén thành file ZIP...";
+        
+        zip.generateAsync({ type: "blob" }).then((content) => {
+            // Tạo tên file zip: TenNguoiNop_AnhDaDuyet.zip (loại bỏ dấu hoặc khoảng trắng nếu cần, ở đây lấy trực tiếp)
+            const safeName = folderItem.ten.replace(/[^a-zA-Z0-9⏳ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯưăâêôơư\s]/g, "");
+            saveAs(content, `${safeName}_Anh_Da_Duyet.zip`);
+            
+            // Khôi phục trạng thái nút bấm
+            downloadZipBtn.disabled = false;
+            downloadZipBtn.innerText = originalText;
+            alert(`🎉 Đã nén và tải xuống thành công ${downloadedCount} ảnh!`);
+        }).catch(err => {
+            console.error("Lỗi nén ZIP:", err);
+            alert("Có lỗi xảy ra trong quá trình nén file ZIP!");
+            downloadZipBtn.disabled = false;
+            downloadZipBtn.innerText = originalText;
+        });
+    };
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // Cấu hình Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyAhKPSou7RAEpkdQqu77bDlv__z0n__h9Y",
+        authDomain: "btlon-6b4fa.firebaseapp.com",
+        databaseURL: "https://btlon-6b4fa-default-rtdb.firebaseio.com",
+        projectId: "btlon-6b4fa",
+        storageBucket: "btlon-6b4fa.firebasestorage.app",
+        messagingSenderId: "924359673932",
+        appId: "1:924359673932:web:e5297eb85f490e059f8ce9",
+        measurementId: "G-Z5R9EL4437"
+    };
+
+    // Google API Key
+    const GOOGLE_DRIVE_API_KEY = "AIzaSyCpemWMrfHXhKeJUcDj0adKnZ3Kd58KwHA";
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const gdriveRef = ref(database, 'muc linkggdrive');
+
+    const nameInput = document.getElementById('studentName');
+    const linkInput = document.getElementById('driveLink');
+    const saveBtn = document.getElementById('btnSave');
+    const cancelBtn = document.getElementById('btnCancel');
+    const editKeyInput = document.getElementById('editKey');
+    const formTitle = document.getElementById('formTitle');
+    const linkList = document.getElementById('linkList');
+    const previewSection = document.getElementById('previewSection');
+    const imageGrid = document.getElementById('imageGrid');
+
+    const params = new URLSearchParams(window.location.search);
+    const onlyViewId = params.get("id");
+
+    if (onlyViewId) {
+        window.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("adminForm").style.display = "none";
+        });
+    }
+
+    let currentData = {};
+    let activeFolderKey = null; 
+
+    // --- TẢI DANH SÁCH THƯ MỤC: DÙNG GET() THAY VÌ ONVALUE HOÀN TOÀN ĐỂ TRÁNH RENDER LẠI ---
+    function loadFolderList() {
+        get(gdriveRef).then((snapshot) => {
+            linkList.innerHTML = ""; 
+            if (snapshot.exists()) {
+                currentData = snapshot.val();
+                renderFolders();
+            } else {
+                currentData = {};
+                linkList.innerHTML = "<li>Hiện tại chưa có thư mục nào được nộp.</li>";
+            }
+        }).catch(err => console.error("Lỗi tải danh sách:", err));
+    }
+
+    // Hàm render danh sách ra giao diện
+    function renderFolders() {
+        linkList.innerHTML = "";
+        for (let key in currentData) {
+            if (onlyViewId && key !== onlyViewId) {
+                continue;
+            }
+            const item = currentData[key];
+            if(item.id && item.ten) {
+                let totalChecked = item.images ? Object.keys(item.images).length : 0;
+
+                const li = document.createElement('li');
+                li.className = "folder-item";
+                li.innerHTML = `
+                    <div>
+                        📁 <span class="folder-link" data-key="${key}">
+                            Thư mục của: ${item.ten}
+                            <span class="user-count" id="count_${key}">Đã chọn: ${totalChecked} tấm</span>
+                        </span>
+                    </div>
+                    ${!onlyViewId ? `
+                    <div class="actions">
+                        <button class="btn-edit" data-key="${key}">Sửa</button>
+                        <button class="btn-delete" data-key="${key}">Xóa</button>
+                        <button class="btn-code" data-key="${key}" style="background:#17a2b8;color:white;padding:6px 12px;font-size:13px;">Lấy code</button>
+                    </div>
+                    ` : ""}
+                `;  
+                linkList.appendChild(li);
+
+                if (onlyViewId === key && activeFolderKey !== key) {
+                    activeFolderKey = key;
+                    previewTitle.innerText = `Ảnh trong thư mục của: ${item.ten}`;
+                    imageGrid.innerHTML = "🔄 Đang tải ảnh...";
+                    previewSection.style.display = "block";
+                    const folderId = extractFolderId(item.id);
+                    if (folderId) {
+                        fetchImagesFromGoogleDrive(folderId, key);
+                    }
+                }
+            }
+        }
+        addListEventListeners();
+    }
+
+    // Chạy tải danh sách lần đầu tiên
+    loadFolderList();
+
+    // --- THÊM HOẶC CẬP NHẬT THƯ MỤC ---
+    saveBtn.addEventListener('click', () => {
+        const tenNuoc = nameInput.value.trim();
+        const linkDrive = linkInput.value.trim();
+        const isEditingKey = editKeyInput.value;
+
+        if (tenNuoc === "" || linkDrive === "") {
+            alert("Vui lòng nhập đầy đủ cả Tên và Link!");
+            return;
+        }
+
+        for (let key in currentData) {
+            if (currentData[key].id === linkDrive && (!isEditingKey || isEditingKey !== key)) {
+                alert(`Lỗi: Link folder này đã được nộp bởi "${currentData[key].ten}" rồi!`);
+                return;
+            }
+        }
+
+        if (isEditingKey) {
+            update(ref(database, `muc linkggdrive/${isEditingKey}`), { id: linkDrive, ten: tenNuoc })
+            .then(() => { 
+                alert("Cập nhật thành công!"); 
+                resetForm(); 
+                loadFolderList(); // Tải lại danh sách sau khi chỉnh sửa
+            });
+        } else {
+            set(push(gdriveRef), { id: linkDrive, ten: tenNuoc })
+            .then(() => { 
+                alert("Thêm thành công!"); 
+                resetForm(); 
+                loadFolderList(); // Tải lại danh sách sau khi thêm mới
+            });
+        }
+    });
+
+    // --- GẮN SỰ KIỆN CHO CÁC NÚT DANH SÁCH ---
+    function addListEventListeners() {
+        document.querySelectorAll('.folder-link').forEach(span => {
+            span.onclick = (e) => {
+                const targetElement = e.target.closest('.folder-link');
+                if (!targetElement) return;
+
+                const key = targetElement.getAttribute('data-key');
+                activeFolderKey = key; 
+                const item = currentData[key];
+                
+                previewTitle.innerText = `Ảnh trong thư mục của: ${item.ten}`;
+                imageGrid.innerHTML = "🔄 Đang kết nối lấy dữ liệu ảnh từ Google Drive...";
+                previewSection.style.display = "block";
+
+                const folderId = extractFolderId(item.id);
+                if (!folderId) {
+                    imageGrid.innerHTML = "<span style='color:red;'>Đường link nhập vào không đúng định dạng thư mục Google Drive!</span>";
+                    return;
+                }
+
+                fetchImagesFromGoogleDrive(folderId, key);
+            };
+        });
+
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.onclick = (e) => {
+                const key = e.target.getAttribute('data-key');
+                const item = currentData[key];
+                nameInput.value = item.ten;
+                linkInput.value = item.id;
+                editKeyInput.value = key;
+                formTitle.innerText = "Chỉnh sửa dữ liệu";
+                saveBtn.innerText = "Cập nhật";
+                cancelBtn.style.display = "inline-block";
+            };
+        });
+
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.onclick = (e) => {
+                const key = e.target.getAttribute('data-key');
+                if (confirm(`Xóa thư mục của "${currentData[key].ten}"?`)) {
+                    remove(ref(database, `muc linkggdrive/${key}`)).then(() => {
+                        if (activeFolderKey === key) {
+                            previewSection.style.display = "none";
+                            activeFolderKey = null;
+                        }
+                        alert("Đã xóa hoàn tất!");
+                        loadFolderList(); // Tải lại danh sách sau khi xóa
+                    });
+                }
+            };
+        });
+
+        document.querySelectorAll('.btn-code').forEach(btn => {
+            btn.onclick = (e) => {
+                const key = e.target.getAttribute('data-key');
+                navigator.clipboard.writeText(key);
+                alert("Đã copy code:\n" + key);
+            };
+        });
+    }
+
+    function extractFolderId(url) {
+        const matches = url.match(/folders\/([a-zA-Z0-9-_]+)/);
+        return matches ? matches[1] : null;
+    }
+
+    // --- LẤY DANH SÁCH ẢNH TỪ DRIVE VÀ THỰC THI LOGIC TRẠNG THÁI THEO YÊU CẦU ---
+    function fetchImagesFromGoogleDrive(folderId, folderKey) {
+        const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image/'&fields=files(id,name,thumbnailLink)&key=${GOOGLE_DRIVE_API_KEY}`;
+
+        fetch(url)
+        .then(async (response) => {
+            if (!response.ok) {
+                const errData = await response.json();
+                console.error("Chi tiết lỗi Google API:", errData);
+                throw new Error(errData.error ? errData.error.message : "Lỗi không xác định");
+            }
+            return response.json();
+        })
+        .then(data => {
+            imageGrid.innerHTML = "";
+            
+            if (data.files && data.files.length > 0) {
+                const savedImages = currentData[folderKey].images || {};
+
+                data.files.forEach((file) => {
+                    const card = document.createElement('div');
+                    card.className = "image-card";
+                    
+                    let displayImgUrl = file.thumbnailLink ? file.thumbnailLink.replace(/=s\d+/, '=w400') : 'https://placehold.co/250x160?text=Khong+Co+Anh';
+
+                    let isChecked = "";
+                    let savedFirebaseKey = "";
+
+                    for (let fKey in savedImages) {
+                        if (savedImages[fKey].name === file.name) {
+                            isChecked = "checked";
+                            savedFirebaseKey = fKey;
+                            break;
+                        }
+                    }
+
+                    card.innerHTML = `
+                        <img src="${displayImgUrl}" alt="${file.name}" onerror="this.src='https://placehold.co/250x160?text=Loi+Hien+Thi'">
+                        <div class="image-name" title="${file.name}">${file.name}</div>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="check_${file.id}" ${isChecked} 
+                                   data-folderkey="${folderKey}" 
+                                   data-file-name="${file.name}" 
+                                   data-firebase-key="${savedFirebaseKey}">
+                            <label for="check_${file.id}">Đã duyệt</label>
+                        </div>
+                    `;
+                    imageGrid.appendChild(card);
+                });
+
+                // XỬ LÝ CHECKBOX KHÔNG RELOAD TRANG
+                document.querySelectorAll('.checkbox-container input').forEach(box => {
+                    box.onchange = async (e) => {
+                        const checkbox = e.target;
+                        const fKey = checkbox.getAttribute('data-folderkey');
+                        const fileName = checkbox.getAttribute('data-file-name');
+                        const countSpan = document.getElementById(`count_${fKey}`);
+
+                        try {
+                            if (!currentData[fKey].images) currentData[fKey].images = {};
+
+                            if (checkbox.checked) {
+                                // Thực hiện CHECK
+                                const targetRef = ref(database, `muc linkggdrive/${fKey}/images`);
+                                const newPushRef = push(targetRef);
+
+                                await set(newPushRef, { name: fileName });
+
+                                // Đồng bộ dữ liệu cục bộ (local variable) để không phải reload
+                                checkbox.setAttribute('data-firebase-key', newPushRef.key);
+                                currentData[fKey].images[newPushRef.key] = { name: fileName };
+
+                            } else {
+                                // Thực hiện UNCHECK
+                                const firebaseKey = checkbox.getAttribute('data-firebase-key');
+                                if (firebaseKey) {
+                                    await remove(ref(database, `muc linkggdrive/${fKey}/images/${firebaseKey}`));
+                                    
+                                    // Đồng bộ dữ liệu cục bộ
+                                    checkbox.setAttribute('data-firebase-key', "");
+                                    delete currentData[fKey].images[firebaseKey];
+                                }
+                            }
+
+                            // Cập nhật mượt số lượng hiển thị trên giao diện danh sách mà không load lại grid ảnh
+                            if (countSpan) {
+                                let totalChecked = Object.keys(currentData[fKey].images).length;
+                                countSpan.innerText = `Đã chọn: ${totalChecked} tấm`;
+                            }
+
+                        } catch(err) {
+                            console.error(err);
+                            alert("Có lỗi xảy ra!");
+                            checkbox.checked = !checkbox.checked; // Trả lại trạng thái cũ nếu lỗi
+                        }
+                    };
+                });
+
+            } else {
+                imageGrid.innerHTML = "<p style='color:orange; font-weight:bold;'>Thư mục trống hoặc không chứa ảnh công khai.</p>";
+            }
+        })
+        .catch(error => {
+            console.error("Lỗi kết nối:", error);
+            imageGrid.innerHTML = `<div style='color:red; background:#fff1f0; padding:15px; border:1px solid #ffa39e; border-radius:4px;'>
+                <strong>Hệ thống chặn kết nối! Nguyên nhân từ Google:</strong><br>
+                <code style='display:block; margin-top:5px; color:#cf1322;'>${error.message}</code>
+            </div>`;
+        });
+    }
+
+    cancelBtn.onclick = resetForm;
+    function resetForm() {
+        nameInput.value = ""; linkInput.value = ""; editKeyInput.value = "";
+        formTitle.innerText = "Thêm thư mục mới"; saveBtn.innerText = "Lưu Dữ Liệu";
+        cancelBtn.style.display = "none";
+    }
+</script>
+</body>
+</html>
