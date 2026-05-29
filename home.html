@@ -216,7 +216,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 16px;
+            padding: 5px 10px;
             border-radius: 20px;
             border: 1px solid #e0e0e0;
             background-color: #f5f5f5;
@@ -324,31 +324,48 @@
         /* Giao diện ĐIỆN THOẠI (Áp dụng khi màn hình nhỏ hơn 576px) */
         /* ======================================================= */
         @media (max-width: 576px) {
-            .filter-buttons-group {
-                display: grid !important; /* Chuyển sang Grid để chia hàng cột */
-                grid-template-columns: repeat(2, 1fr) !important; /* Chia đều thành 2 cột */
-                gap: 8px !important; /* Khoảng cách giữa các nút */
-                padding: 0 10px;
-                box-sizing: border-box;
-            }
 
-            .filter-btn {
-                width: 100% !important;
-                padding: 12px 6px !important; /* Tăng chiều cao một chút để dễ bấm */
-                font-size: 13px !important; /* Hạ size chữ xuống một xíu cho vừa mobile */
-                border-radius: 12px !important; /* Bo góc gọn gàng hơn */
-                white-space: normal !important; /* Cho phép chữ tự động xuống dòng nếu quá dài */
-                text-align: center;
-                line-height: 1.2;
-            }
-            .checkbox-container{
+        .main-filter-wrapper{
             display:flex !important;
+            flex-direction:column !important;
             gap:12px;
+            align-items:stretch !important;
+        }
+
+        /* 3 nút filter nằm chung 1 hàng */
+        .filter-buttons-group {
+            display:grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap:8px !important;
+            width:100%;
+            padding:0;
+        }
+
+        .filter-btn {
+            width:100% !important;
+            padding:10px 4px !important;
+            font-size:12px !important;
+            border-radius:12px !important;
+
+            display:flex;
             justify-content:center;
             align-items:center;
+
+            white-space:nowrap !important;
         }
-        
+
+        /* nút tải xuống xuống hàng riêng */
+        .download-container{
+            width:100%;
         }
+
+        #btn-download-selected{
+            width:100%;
+            justify-content:center;
+            padding:12px !important;
+            border-radius:14px !important;
+        }
+    }
         .download-single-btn,
         .approve-btn{
             width:42px !important;
